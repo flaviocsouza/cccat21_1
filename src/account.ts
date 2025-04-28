@@ -69,7 +69,8 @@ export async function getAccountBalanceByAsset(accountId:any, assetId: any): Pro
     });
 }
 
-export async function doTransaction(transaction:Asset) {    
+export async function doTransaction(transaction:Asset, positiveTransaction:boolean = true) {    
+    if(!positiveTransaction) transaction.quantity *= -1;
     const currentBalance = await getAccountBalanceByAsset(transaction.accountId, transaction.assetId);        
     if(currentBalance)
        return await transactExistingAsset(transaction);
