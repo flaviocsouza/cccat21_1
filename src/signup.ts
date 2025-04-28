@@ -1,7 +1,7 @@
 import express, { Request, Response } from "express";
-import crypto from "crypto";
 import pgp from "pg-promise";
 import { validateCpf } from "./validateCpf";
+import { createAccount, getAccountById } from "./account";
 
 const app = express();
 app.use(express.json());
@@ -47,16 +47,15 @@ app.post("/signup", async (req: Request, res: Response) => {
             error: "Invalid password"
         });
     }
-    const accountId = crypto.randomUUID();
+   
     const account = {
-        accountId,
         name: input.name,
         email: input.email,
         document: input.document,
         password: input.password
     }
     // accounts.push(account);
-    await connection.query("insert into ccca.account (account_id, name, email, document, password) values ($1, $2, $3, $4, $5)", [account.accountId, account.name, account.email, account.document, account.password]);
+    const accountId = await createAccount(account);
     res.json({
         accountId
     });
@@ -65,7 +64,7 @@ app.post("/signup", async (req: Request, res: Response) => {
 app.get("/accounts/:accountId", async (req: Request, res: Response) => {
     const accountId = req.params.accountId;
     // const account = accounts.find((account: any) => account.accountId === accountId);
-    const [accountData] = await connection.query("select * from ccca.account where account_id = $1", [accountId]);
+    const [accountData] = await getAccountById(accountId);
     res.json(accountData);
 });
 
