@@ -3,11 +3,7 @@ import pgp from "pg-promise";
 import { validateCpf } from "./validateCpf";
 import { createAccount, getAccountById } from "./account";
 
-const app = express();
-app.use(express.json());
 
-// const accounts: any = [];
-const connection = pgp()("postgres://postgres:123456@localhost:5432/app");
 
 function isValidName (name: string) {
     return name.match(/[a-zA-Z] [a-zA-Z]+/);
@@ -25,7 +21,7 @@ function isValidPassword (password: string) {
     return true;
 }
 
-app.post("/signup", async (req: Request, res: Response) => {
+export async function signup(req: Request, res: Response) {
     const input = req.body;
     if (!isValidName(input.name)) {
         return res.status(422).json({
@@ -59,13 +55,12 @@ app.post("/signup", async (req: Request, res: Response) => {
     res.json({
         accountId
     });
-});
+}
 
-app.get("/accounts/:accountId", async (req: Request, res: Response) => {
-    const accountId = req.params.accountId;
-    // const account = accounts.find((account: any) => account.accountId === accountId);
+
+export async function getAccount(req: Request, res: Response){
+    const accountId = req.params.accountId;    
     const [accountData] = await getAccountById(accountId);
-    res.json(accountData);
-});
+    res.json(accountData);    
+}
 
-app.listen(3000);

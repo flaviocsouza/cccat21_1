@@ -1,11 +1,9 @@
-import express, { Request, Response } from "express";
+import { Request, Response } from "express";
 import { getAccountBalanceByAsset, getAccountById } from "./account";
-import { createOrder, getOrdersByAccountId, Order } from "./orders";
+import { createOrder, getOrdersByAccountId, Order } from "./order";
 
-const app = express();
-app.use(express.json());
 
-app.post("/placeOrder", async (req: Request, res: Response) => {
+export async function placeOrder(req: Request, res: Response) {
     const order = req.body as Order;
     const account = await getAccountById(order.accountId);
     if (account.length <= 0) {
@@ -38,10 +36,4 @@ app.post("/placeOrder", async (req: Request, res: Response) => {
 
     const orderId = await createOrder(order);
     res.json({ orderId });
-});
-
-// app.get("/getOrders" , async (req: Request, res: Response) => {
-
-// });
-
-app.listen(3000);
+}

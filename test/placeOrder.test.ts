@@ -1,6 +1,6 @@
 import axios from "axios";
 import { createAccount, doTransaction } from "../src/account";
-import { createOrder, getOrderById } from "../src/orders";
+import { createOrder, getOrderById } from "../src/order";
 
 axios.defaults.validateStatus = () => true;
 

@@ -1,12 +1,10 @@
 import express, { Request, Response } from "express";
 import { Asset, doTransaction, getAccountBalanceByAsset, getAccountById } from "./account";
 
-const app = express()
-app.use(express.json());
 
 const validAssets = ["BTC", "USD"]
 
-app.post("/withdraw", async(req: Request, res: Response) => {
+export async function withdraw (req: Request, res: Response) {
     const transaction = req.body as Asset
     const account = await getAccountById(transaction.accountId)
     if(account.length <= 0){
@@ -33,6 +31,4 @@ app.post("/withdraw", async(req: Request, res: Response) => {
     }
     await doTransaction(transaction, false)
     res.json()
-});
-
-app.listen(3000)
+}
