@@ -1,5 +1,4 @@
 import express, { Request, Response } from "express";
-import pgp from "pg-promise";
 import { validateCpf } from "./validateCpf";
 import { createAccount, getAccountById } from "./account";
 

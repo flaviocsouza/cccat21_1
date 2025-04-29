@@ -3,16 +3,18 @@ import { createAccount, doTransaction, getAccountBalance, getAccountBalanceByAss
 
 axios.defaults.validateStatus = () => true;
 
-test("Deve Retornar 200 para uma solicitação valida", async () => {
-    //Given
-    var account = {
+async function createNewAccount() {
+    return await createAccount({
         name: "John Doe",
         email: "john.doe",
         document: "97456321558",
         password: "asdQWE123"
-    }
+    });
+}
 
-    const accountId = await createAccount(account);
+test("Deve Retornar 200 para uma solicitação valida", async () => {
+    //Given
+    const accountId = await createNewAccount();
     await doTransaction({
         accountId,
         assetId: "BTC",
@@ -46,14 +48,7 @@ test("Deve Retornar 404 para uma conta inexistente", async () => {
 })
 
 test("Deve Retornar 422 quando o Ativo for invalido", async () => {
-    var account = {
-        name: "John Doe",
-        email: "john.doe",
-        document: "97456321558",
-        password: "asdQWE123"
-    }
-
-    const accountId = await createAccount(account);
+    const accountId = await createNewAccount();
     const request = {
         accountId: accountId,
         assetId: "XXXX",
@@ -69,14 +64,7 @@ test("Deve Retornar 422 quando o Ativo for invalido", async () => {
 });
 
 test("Deve Retornar 422 quando a quantidade for negativa", async () => {
-    var account = {
-        name: "John Doe",
-        email: "john.doe",
-        document: "97456321558",
-        password: "asdQWE123"
-    }
-
-    const accountId = await createAccount(account);
+    const accountId = await createNewAccount();
     const request = {
         accountId: accountId,
         assetId: "BTC",
@@ -92,14 +80,7 @@ test("Deve Retornar 422 quando a quantidade for negativa", async () => {
 });
 
 test("Deve Retornar 422 quando tentar sacar um ativo inexistente para a conta", async () => {
-    var account = {
-        name: "John Doe",
-        email: "john.doe",
-        document: "97456321558",
-        password: "asdQWE123"
-    }
-
-    const accountId = await createAccount(account);
+    const accountId = await createNewAccount();
     const request = {
         accountId: accountId,
         assetId: "BTC",
@@ -116,13 +97,7 @@ test("Deve Retornar 422 quando tentar sacar um ativo inexistente para a conta", 
 
 
 test("Deve Retornar 422 quando tentar um valor maior que o disponível", async () => {
-    var account = {
-        name: "John Doe",
-        email: "john.doe",
-        document: "97456321558",
-        password: "asdQWE123"
-    };
-    const accountId = await createAccount(account);
+    const accountId = await createNewAccount();
     await doTransaction({
         accountId,
         assetId: "BTC",
@@ -144,13 +119,7 @@ test("Deve Retornar 422 quando tentar um valor maior que o disponível", async (
 
 test("Deve Decrementar Corretamente o Valor Sacado da Conta", async() => {
     //Given
-    var account = {
-        name: "John Doe",
-        email: "john.doe",
-        document: "97456321558",
-        password: "asdQWE123"
-    };
-    const accountId = await createAccount(account);
+    const accountId = await createNewAccount();
     await doTransaction({
         accountId,
         assetId: "BTC",
@@ -173,13 +142,7 @@ test("Deve Decrementar Corretamente o Valor Sacado da Conta", async() => {
 });
 
 test("Deve Decrementar Apenas o Valor do Ativo Sacado", async() => {
-    var account = {
-        name: "John Doe",
-        email: "john.doe",
-        document: "97456321558",
-        password: "asdQWE123"
-    };
-    const accountId = await createAccount(account);
+    const accountId = await createNewAccount();
     await doTransaction({
         accountId,
         assetId: "BTC",

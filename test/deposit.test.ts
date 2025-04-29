@@ -1,26 +1,29 @@
 import axios from "axios";
-import { createAccount, getAccountBalanceByAsset, transactNewAsset } from "../src/account";
+import { createAccount, getAccountBalanceByAsset, transactExistingAsset, transactNewAsset } from "../src/account";
 
 axios.defaults.validateStatus = () => true;
 
-test("Deve retornar sucesso ao receber uma Transação Valida", async () => {
-    //given    
-    var account = {
+async function createNewAccount() {
+    return await createAccount({
         name: "John Doe",
         email: "john.doe",
         document: "97456321558",
         password: "asdQWE123"
-    }
+    });
+}
 
-    const accountId =  await createAccount(account);
+test("Deve retornar sucesso ao receber uma Transação Valida", async () => {
+    //given    
+    
+    const accountId = await createNewAccount();
     const request = {
         accountId: accountId,
         assetId: "BTC",
         quantity: 10
     };
-    
+
     //when
-    
+
     var response = await axios.post("http://localhost:3000/deposit", request)
 
     //then
@@ -80,18 +83,12 @@ test("Deve retornar 422 quando a Conta não existir", async () => {
 });
 
 test("Deve persistir o deposito para um ativo existente", async () => {
-    var account = {
-        name: "John Doe",
-        email: "john.doe",
-        document: "97456321558",
-        password: "asdQWE123"
-    }
-    const accountId =  await createAccount(account);    
-    let transaction =  {
-        accountId: accountId, 
+    const accountId = await createNewAccount();
+    let transaction = {
+        accountId: accountId,
         assetId: "BTC",
         quantity: 20
-    };    
+    };
     await transactNewAsset(transaction);
     const request = {
         accountId: accountId,
@@ -105,17 +102,11 @@ test("Deve persistir o deposito para um ativo existente", async () => {
     //then
     const balance = await getAccountBalanceByAsset(accountId, "BTC");
     expect(response.status).toBe(200);
-    expect(balance!.quantity).toBe(30);    
+    expect(balance!.quantity).toBe(30);
 });
 
 test("Deve persistir o deposito para um ativo Inexistente", async () => {
-    var account = {
-        name: "John Doe",
-        email: "john.doe",
-        document: "97456321558",
-        password: "asdQWE123"
-    }
-    const accountId =  await createAccount(account);    
+    const accountId = await createNewAccount();
     const request = {
         accountId: accountId,
         assetId: "BTC",
@@ -128,32 +119,23 @@ test("Deve persistir o deposito para um ativo Inexistente", async () => {
     //then
     const balance = await getAccountBalanceByAsset(accountId, "BTC");
     expect(response.status).toBe(200);
-    expect(balance!.quantity).toBe(10);    
+    expect(balance!.quantity).toBe(10);
 });
 
 test("Deve alterar apenas os ativos do Id Informado", async () => {
-    var account = {
-        name: "John Doe",
-        email: "john.doe",
-        document: "97456321558",
-        password: "asdQWE123"
-    }
-    const accountId =  await createAccount(account);    
-    
-    let transaction =  {
-        accountId: accountId, 
+    const accountId = await createNewAccount();
+    let transaction = {
+        accountId: accountId,
         assetId: "BTC",
         quantity: 20
-    };    
+    };
     await transactNewAsset(transaction);
-
-    transaction =  {
-        accountId: accountId, 
+    transaction = {
+        accountId: accountId,
         assetId: "USD",
         quantity: 70
-    };    
+    };
     await transactNewAsset(transaction);
-
     const request = {
         accountId: accountId,
         assetId: "BTC",
@@ -166,5 +148,5 @@ test("Deve alterar apenas os ativos do Id Informado", async () => {
     //then
     const balance = await getAccountBalanceByAsset(accountId, "BTC");
     expect(response.status).toBe(200);
-    expect(balance!.quantity).toBe(30);    
+    expect(balance!.quantity).toBe(30);
 });
