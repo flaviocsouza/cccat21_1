@@ -3,6 +3,11 @@ import { getAccountBalanceByAsset, getAccountById } from "./account";
 import { createOrder, getOrdersByAccountId, Order } from "./order";
 
 
+const sides = {
+    buy: "BUY",
+    sell: "SELL"
+}
+
 export async function placeOrder(req: Request, res: Response) {
     const order = req.body as Order;
     const account = await getAccountById(order.accountId);
@@ -11,24 +16,14 @@ export async function placeOrder(req: Request, res: Response) {
             error: "Account Not Found"
         });
     }
-    const withdrawnAssetPosition = order.side == "SELL" ? 0 : 1;
-    const withdrawnAssetId = order.marketId.split("/")[withdrawnAssetPosition];
-    const withdrawnAsset = await getAccountBalanceByAsset(order.accountId, withdrawnAssetId);
+    const withdrawnAssetId = getWithdrawnAsset(order);
     const currentOrders = await getOrdersByAccountId(order.accountId);
+    const lockedBalance = currentOrders
+        .filter(checkedOrder => getOrdersWithdrawingAsset(withdrawnAssetId, checkedOrder))
+        .reduce((sum, curr) => sum + curr.quantity, order.quantity);
 
-    var buyingOrdersValue = 0;
-    const buyingPricesOrders = currentOrders
-        .filter(o => o.side === "BUY" && o.marketId.split("/")[1] == withdrawnAssetId)
-        .map(bo => bo.quantity);
-    if (buyingPricesOrders.length > 0) buyingOrdersValue = buyingPricesOrders.reduce((sum, curr) => sum + curr);
-
-    var sellingOrdersValue = 0;
-    const sellingPricesOrders = currentOrders
-        .filter(o => o.side === "SELL" && o.marketId.split("/")[0] == withdrawnAssetId)
-        .map(so => so.quantity);
-    if (sellingPricesOrders.length > 0) sellingOrdersValue = sellingPricesOrders.reduce((sum, curr) => sum + curr);
-
-    if (!withdrawnAsset || withdrawnAsset?.quantity < (order.quantity + sellingOrdersValue + buyingOrdersValue)) {
+    const withdrawnAsset = await getAccountBalanceByAsset(order.accountId, withdrawnAssetId);
+    if (!withdrawnAsset || withdrawnAsset?.quantity < lockedBalance) {
         return res.status(422).json({
             error: "Balance unavailable"
         });
@@ -36,4 +31,33 @@ export async function placeOrder(req: Request, res: Response) {
 
     const orderId = await createOrder(order);
     res.json({ orderId });
+}
+
+function getWithdrawnAssetPosition(side: string): number {
+    return side === sides.sell ? 0 : 1;
+}
+
+function getAssetsByMarket(marketId: string): string[] {
+    return marketId.split("/")
+}
+
+function getWithdrawnAsset(order: Order): string {
+    const withdrawnAssetPosition = getWithdrawnAssetPosition(order.side);
+    return getAssetsByMarket(order.marketId)[withdrawnAssetPosition];
+}
+
+function getOrdersWithdrawingAsset(assetId: string, order: Order) {
+    const assetToCheck = order.side === sides.buy
+        ? getSideAssetByMarket(order.marketId)
+        : getMainAssetByMarket(order.marketId);
+    return assetToCheck === assetId;
+
+}
+
+function getMainAssetByMarket(marketId: string): string {
+    return getAssetsByMarket(marketId)[0]
+}
+
+function getSideAssetByMarket(marketId: string): string {
+    return getAssetsByMarket(marketId)[1]
 }
