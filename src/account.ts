@@ -23,7 +23,7 @@ export async function getAccountById(accountId:any) {
 export async function getAccountBalance(accountId:any): Promise<Asset[]> {
     return await connection.query<Asset[]>(accountScripts.selectAccountAssetsScript, accountId)
     .then(assets => {
-        return assets.map( a=> {
+        return assets.map( a => {
             return { 
                 accountId: a.accountId, 
                 assetId: a.assetId, 
