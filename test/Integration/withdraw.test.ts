@@ -26,7 +26,6 @@ test("Deve Retornar 200 para uma solicitação valida", async () => {
         quantity: 10
     };
     var response = await axios.post("http://localhost:3000/withdraw", request);
-    console.log(response.data)
     expect(response.status).toBe(200);
 });
 

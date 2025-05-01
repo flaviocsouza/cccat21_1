@@ -16,14 +16,14 @@ export class PlaceOrder {
 
     public async execute(order: any) {
         const account = await this.accountDao.getAccountById(order.accountId);
-            if (!account) throw { error: "Account Not Found" };
+            if (!account) throw new Error("Account Not Found");
             const withdrawnAssetId = this.getWithdrawnAsset(order);
             const currentOrders = await this.orderDao.getOrdersByAccountId(order.accountId);
             const lockedBalance = currentOrders
                 .filter((checkedOrder: any) => this.getOrdersWithdrawingAsset(withdrawnAssetId, checkedOrder))
                 .reduce((sum: number, curr:  any) => sum + curr.quantity, order.quantity);        
             const withdrawnAsset = await this.accountDao.getAccountBalanceByAsset(order.accountId, withdrawnAssetId);
-            if (!withdrawnAsset || withdrawnAsset?.quantity < lockedBalance) throw { error: "Balance unavailable" };
+            if (!withdrawnAsset || withdrawnAsset?.quantity < lockedBalance) throw new Error("Balance unavailable");
             const orderId = await this.orderDao.createOrder(order);
             return { orderId }
     }

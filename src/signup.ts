@@ -9,10 +9,10 @@ export class Signup {
      }
 
     public async execute(account: any) {
-        if (!this.isValidName(account.name)) throw { error: "Invalid name" };
-        if (!this.isValidEmail(account.email)) throw { error: "Invalid email" };
-        if (!validateCpf(account.document)) throw { error: "Invalid document" };
-        if (!this.isValidPassword(account.password)) throw { error: "Invalid password" };
+        if (!this.isValidName(account.name)) throw new Error("Invalid name");
+        if (!this.isValidEmail(account.email)) throw new Error("Invalid email");
+        if (!validateCpf(account.document)) throw new Error("Invalid document");
+        if (!this.isValidPassword(account.password)) throw new Error("Invalid password");
         const accountId = await this.dao.createAccount(account);        
         return { accountId };
     }

@@ -9,10 +9,10 @@ export class Deposit {
     }
 
     public async execute(deposit: any) {
-        if (!this.validAssets.find(s => s === deposit.assetId)) throw { error: "Invalid Asset" };
-        if (deposit.quantity < 0) throw { error: "Quantity Must Be Greater Than Zero" };
+        if (!this.validAssets.find(s => s === deposit.assetId)) throw new Error("Invalid Asset");
+        if (deposit.quantity < 0) throw new Error("Quantity Must Be Greater Than Zero");
         const account = await this.dao.getAccountById(deposit.accountId);
-        if (!account) throw { error: "Account Not Found" };
+        if (!account) throw new Error("Account Not Found");
         let asset = await this.dao.getAccountBalanceByAsset(deposit.accountId, deposit.assetId);
         if(!asset) return await this.dao.createAsset(deposit);
         asset.quantity += deposit.quantity;

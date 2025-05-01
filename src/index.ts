@@ -23,9 +23,8 @@ app.post("/placeOrder", async(req: Request, res: Response) => {
         const response = await placeOrder.execute(req.body);
         res.json(response);
     }
-    catch(e)
-    {
-        res.status(422).json(e);
+    catch(error: any) {
+        res.status(422).json({ error: error.message });
     }
 });
 
@@ -34,9 +33,8 @@ app.post("/deposit", async(req: Request, res: Response) => {
         const response = await deposit.execute(req.body);
         res.json(response);
     }
-    catch(e)
-    {
-        res.status(422).json(e);
+    catch(error: any) {
+        res.status(422).json({ error: error.message });
     }
 });
 
@@ -45,9 +43,8 @@ app.post("/withdraw", async(req: Request, res: Response) => {
         const response = await withdraw.execute(req.body);
         res.json(response);
     }
-    catch(e)
-    {
-        res.status(422).json(e);
+    catch(error: any) {
+        res.status(422).json({ error: error.message });
     }
 });
 
@@ -56,9 +53,8 @@ app.post("/signup", async (req: Request, res: Response) => {
         const response = await signup.execute(req.body);
         res.json(response);
     }
-    catch(e)
-    {
-        res.status(422).json(e);
+    catch(error: any) {
+        res.status(422).json({ error: error.message });
     }
 });
 

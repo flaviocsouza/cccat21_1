@@ -1,6 +1,15 @@
 import axios from "axios";
+import sinon from "sinon";
+import { Deposit } from "../../src/Deposit";
+import { FakeAccountDao } from "../Fake/FakeAccountDao";
+import { Signup } from "../../src/Signup";
+import { IAccountDao } from "../../src/AccountDao";
+import { GetAccount } from "../../src/GetAccount";
 
 axios.defaults.validateStatus = () => true;
+
+let deposit: Deposit;
+let accountDao: IAccountDao;
 
 function newAccount() {
     return {
@@ -11,117 +20,103 @@ function newAccount() {
     };
 }
 
-test("Deve retornar sucesso ao receber uma Transação Valida", async () => {
-    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
-    const accountId = responseSignup.data.accountId;
-    const request = {
+beforeEach(() => {
+    accountDao = new FakeAccountDao();
+    deposit = new Deposit(accountDao);
+});
+
+test("Deve persistir o deposito para um ativo Inexistente", async () => {
+    const accountDaoMock = sinon.mock(FakeAccountDao.prototype);
+    accountDaoMock.expects("createAsset").once().resolves();
+    const accountId = crypto.randomUUID();
+    accountDaoMock.expects("getAccountById").once().resolves({ accountId });
+    const transaction = {
         accountId: accountId,
         assetId: "BTC",
         quantity: 10
     };
-    var response = await axios.post("http://localhost:3000/deposit", request)
-    expect(response.status).toBe(200);
+    accountDaoMock.expects("getAccountBalanceByAsset").once().resolves(null);
+    await deposit.execute(transaction)
+    accountDaoMock.verify();
+    accountDaoMock.restore();
 });
 
-test("Deve retornar 422 quando um ativo for inválido", async () => {
+test("Deve persistir o deposito para um ativo existente", async () => {    
+    const accountDaoMock = sinon.mock(FakeAccountDao.prototype);
+    accountDaoMock.expects("updateAssetValue").once().resolves();
+    const accountId = crypto.randomUUID();
+    accountDaoMock.expects("getAccountById").once().resolves({ accountId });
+    const previousAsset = {
+        accountId: accountId,
+        assetId: "BTC",
+        quantity: 10
+    };
+    accountDaoMock.expects("getAccountBalanceByAsset").once().resolves(previousAsset);    
+    const transaction = {
+        accountId: accountId,
+        assetId: "BTC",
+        quantity: 20
+    };
+    await deposit.execute(transaction)
+    accountDaoMock.verify();
+    accountDaoMock.restore();
+});
+
+
+test("Näo deve efetuar um Deposito de Asset Invalido", async () => {
     var accouuntId = crypto.randomUUID();
-    const request = {
+    const transaction = {
         accountId: accouuntId,
         assetId: "XXX",
         quantity: 10
     };
-    var response = await axios.post("http://localhost:3000/deposit", request)
-    expect(response.status).toBe(422);
-    expect(response.data.error).toBe("Invalid Asset")
+    await expect(() => deposit.execute(transaction)).rejects.toThrow("Invalid Asset");
 });
 
-test("Deve retornar 422 quando a quantidade for menor que zero", async () => {
+test("Não deve efetuar um deposito com uma quantidade menor que Zero", async () => {
     var accouuntId = crypto.randomUUID();
-    const request = {
+    const transaction = {
         accountId: accouuntId,
         assetId: "BTC",
         quantity: -10
     };
-    var response = await axios.post("http://localhost:3000/deposit", request);
-    expect(response.status).toBe(422);
-    expect(response.data.error).toBe("Quantity Must Be Greater Than Zero");
+    await expect(() => deposit.execute(transaction)).rejects.toThrow("Quantity Must Be Greater Than Zero");
 });
 
-test("Deve retornar 422 quando a Conta não existir", async () => {
+test("Não deve efetuar um deposito para uma conta Inexistente", async () => {
     var accouuntId = crypto.randomUUID();
-    const request = {
+    const transaction = {
         accountId: accouuntId,
         assetId: "BTC",
         quantity: 10
     };
-    var response = await axios.post("http://localhost:3000/deposit", request)
-    expect(response.status).toBe(422);
-    expect(response.data.error).toBe("Account Not Found");
+    await expect(() => deposit.execute(transaction)).rejects.toThrow("Account Not Found");
 });
 
-
-test("Deve persistir o deposito para um ativo Inexistente", async () => {
-    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
-    const accountId = responseSignup.data.accountId;
-    const request = {
+test("Deve Trabalhar corretamente com os Valores Depositados", async () => {
+    const signupReturn =  await new Signup(accountDao).execute(newAccount()); 
+    const accountId = signupReturn.accountId;
+    const previousBtcDeposit = {
         accountId: accountId,
         assetId: "BTC",
         quantity: 10
     };
-    var response = await axios.post("http://localhost:3000/deposit", request);    
-    const responseGetAccount = await axios.get(`http://localhost:3000/accounts/${accountId}`);
-    const account = responseGetAccount.data.account;
-    const balance = account.Assets.find((a:any) => a.assetId === "BTC");
-    expect(response.status).toBe(200);
-    expect(balance!.quantity).toBe(10);
-});
-
-test("Deve persistir o deposito para um ativo existente", async () => {    
-    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
-    const accountId = responseSignup.data.accountId;
-    const requestNewAsset = {
-        accountId: accountId,
-        assetId: "BTC",
-        quantity: 10
-    };
-    var response = await axios.post("http://localhost:3000/deposit", requestNewAsset);
-    const requestExistingAsset = {
-        accountId: accountId,
-        assetId: "BTC",
-        quantity: 20
-    };
-    var response = await axios.post("http://localhost:3000/deposit", requestExistingAsset)
-    const responseGetAccount = await axios.get(`http://localhost:3000/accounts/${accountId}`);
-    const account = responseGetAccount.data.account;
-    const balance = account.Assets.find((a:any) => a.assetId === "BTC");
-    expect(response.status).toBe(200);
-    expect(balance!.quantity).toBe(30);
-});
-
-test("Deve alterar apenas os ativos do Id Informado", async () => {
-    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
-    const accountId = responseSignup.data.accountId;
-    const requestBtcAsset = {
-        accountId: accountId,
-        assetId: "BTC",
-        quantity: 10
-    };
-    var response = await axios.post("http://localhost:3000/deposit", requestBtcAsset);
-    let requestUsdAsset = {
+    await deposit.execute(previousBtcDeposit);    
+    const previousUsdDeposit = {
         accountId: accountId,
         assetId: "USD",
         quantity: 70
     };
-    var response = await axios.post("http://localhost:3000/deposit", requestUsdAsset);
-    const request = {
+    await deposit.execute(previousUsdDeposit);
+    const transaction = {
         accountId: accountId,
         assetId: "BTC",
         quantity: 20
     };
-    var response = await axios.post("http://localhost:3000/deposit", request)
-    const responseGetAccount = await axios.get(`http://localhost:3000/accounts/${accountId}`);
-    const account = responseGetAccount.data.account;
-    const balance = account.Assets.find((a:any) => a.assetId === "BTC");
-    expect(response.status).toBe(200);
-    expect(balance!.quantity).toBe(30);
+    await deposit.execute(transaction);
+    const getAccountReturn = await new GetAccount(accountDao).execute(accountId);  
+    const btcBalance = getAccountReturn.account.Assets.find((a:any) => a.assetId === "BTC");
+    const usdBalance = getAccountReturn.account.Assets.find((a:any) => a.assetId === "USD");
+    expect(btcBalance!.quantity).toBe(30);
+    expect(usdBalance!.quantity).toBe(70);
 });
