@@ -1,63 +1,59 @@
-import { Request, Response } from "express";
-import { getAccountBalanceByAsset, getAccountById } from "./account";
-import { createOrder, getOrdersByAccountId, Order } from "./order";
+import { IAccountDao } from "./AccountDao";
+import { IOrderDao } from "./OrderDao"
 
-
-const sides = {
-    buy: "BUY",
-    sell: "SELL"
-}
-
-export async function placeOrder(req: Request, res: Response) {
-    const order = req.body as Order;
-    const account = await getAccountById(order.accountId);
-    if (account.length <= 0) {
-        return res.status(404).json({
-            error: "Account Not Found"
-        });
+export class PlaceOrder {
+    private orderDao: IOrderDao;
+    private accountDao: IAccountDao;
+    private sides = {
+        buy: "BUY",
+        sell: "SELL"
     }
-    const withdrawnAssetId = getWithdrawnAsset(order);
-    const currentOrders = await getOrdersByAccountId(order.accountId);
-    const lockedBalance = currentOrders
-        .filter(checkedOrder => getOrdersWithdrawingAsset(withdrawnAssetId, checkedOrder))
-        .reduce((sum, curr) => sum + curr.quantity, order.quantity);
 
-    const withdrawnAsset = await getAccountBalanceByAsset(order.accountId, withdrawnAssetId);
-    if (!withdrawnAsset || withdrawnAsset?.quantity < lockedBalance) {
-        return res.status(422).json({
-            error: "Balance unavailable"
-        });
-    };
+    constructor(orderDao: IOrderDao, accountDao: IAccountDao) {
+        this.orderDao = orderDao;
+        this.accountDao = accountDao;
+    }
 
-    const orderId = await createOrder(order);
-    res.json({ orderId });
-}
+    public async execute(order: any) {
+        const account = await this.accountDao.getAccountById(order.accountId);
+            if (!account) throw { error: "Account Not Found" };
+            const withdrawnAssetId = this.getWithdrawnAsset(order);
+            const currentOrders = await this.orderDao.getOrdersByAccountId(order.accountId);
+            const lockedBalance = currentOrders
+                .filter((checkedOrder: any) => this.getOrdersWithdrawingAsset(withdrawnAssetId, checkedOrder))
+                .reduce((sum: number, curr:  any) => sum + curr.quantity, order.quantity);        
+            const withdrawnAsset = await this.accountDao.getAccountBalanceByAsset(order.accountId, withdrawnAssetId);
+            if (!withdrawnAsset || withdrawnAsset?.quantity < lockedBalance) throw { error: "Balance unavailable" };
+            const orderId = await this.orderDao.createOrder(order);
+            return { orderId }
+    }
 
-function getWithdrawnAssetPosition(side: string): number {
-    return side === sides.sell ? 0 : 1;
-}
+    private getWithdrawnAsset(order: any): string {
+        const withdrawnAssetPosition = this.getWithdrawnAssetPosition(order.side);
+        return this.getAssetsByMarket(order.marketId)[withdrawnAssetPosition];
+    }
 
-function getAssetsByMarket(marketId: string): string[] {
-    return marketId.split("/")
-}
+    private getWithdrawnAssetPosition(side: string): number {
+        return side === this.sides.sell ? 0 : 1;
+    }
+    
+    private getAssetsByMarket(marketId: string): string[] {
+        return marketId.split("/")
+    }
 
-function getWithdrawnAsset(order: Order): string {
-    const withdrawnAssetPosition = getWithdrawnAssetPosition(order.side);
-    return getAssetsByMarket(order.marketId)[withdrawnAssetPosition];
-}
+    private getOrdersWithdrawingAsset(assetId: string, order: any) {
+        const assetToCheck = order.side === this.sides.buy
+            ? this.getSideAssetByMarket(order.marketId)
+            : this.getMainAssetByMarket(order.marketId);
+        return assetToCheck === assetId;
+    
+    }
 
-function getOrdersWithdrawingAsset(assetId: string, order: Order) {
-    const assetToCheck = order.side === sides.buy
-        ? getSideAssetByMarket(order.marketId)
-        : getMainAssetByMarket(order.marketId);
-    return assetToCheck === assetId;
-
-}
-
-function getMainAssetByMarket(marketId: string): string {
-    return getAssetsByMarket(marketId)[0]
-}
-
-function getSideAssetByMarket(marketId: string): string {
-    return getAssetsByMarket(marketId)[1]
+    private getMainAssetByMarket(marketId: string): string {
+        return this.getAssetsByMarket(marketId)[0]
+    }
+    
+    private getSideAssetByMarket(marketId: string): string {
+        return this.getAssetsByMarket(marketId)[1]
+    }
 }

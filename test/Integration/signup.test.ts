@@ -13,7 +13,7 @@ test("Deve criar uma conta válida", async () => {
     const outputSignup = responseSignup.data;
     expect(outputSignup.accountId).toBeDefined();
     const responseGetAccount = await axios.get(`http://localhost:3000/accounts/${outputSignup.accountId}`);
-    const outputGetAccount = responseGetAccount.data;
+    const outputGetAccount = responseGetAccount.data.account;
     expect(outputGetAccount.name).toBe(inputSignup.name);
     expect(outputGetAccount.email).toBe(inputSignup.email);
     expect(outputGetAccount.document).toBe(inputSignup.document);

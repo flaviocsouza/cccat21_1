@@ -1,173 +1,156 @@
 import axios from "axios";
-import { createAccount, doTransaction, getAccountBalance, getAccountBalanceByAsset } from "../src/account";
 
 axios.defaults.validateStatus = () => true;
 
-async function createNewAccount() {
-    return await createAccount({
+function newAccount() {
+    return {
         name: "John Doe",
-        email: "john.doe",
+        email: "john.doe@gmail.com",
         document: "97456321558",
         password: "asdQWE123"
-    });
+    };
 }
 
 test("Deve Retornar 200 para uma solicitação valida", async () => {
-    //Given
-    const accountId = await createNewAccount();
-    await doTransaction({
-        accountId,
+    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
+    const accountId = responseSignup.data.accountId;
+    const requestDeposit = {
+        accountId: accountId,
         assetId: "BTC",
-        quantity: 20
-    });
+        quantity: 10
+    };
+    var response = await axios.post("http://localhost:3000/deposit", requestDeposit)
     const request = {
         accountId: accountId,
         assetId: "BTC",
         quantity: 10
     };
-
-    //When
     var response = await axios.post("http://localhost:3000/withdraw", request);
-
-    //Then
+    console.log(response.data)
     expect(response.status).toBe(200);
 });
 
-test("Deve Retornar 404 para uma conta inexistente", async () => {
+test("Deve Retornar 422 para uma conta inexistente", async () => {
     var accountId = crypto.randomUUID();
     var request = {
         accountId,
         assetId: "BTC",
         quantity: 10
     };
-
     var response = await axios.post("http://localhost:3000/withdraw", request);
-
     expect(response.status).toBe(422);
     expect(response.data.error).toBe("Account Not Found");
-})
+});
 
 test("Deve Retornar 422 quando o Ativo for invalido", async () => {
-    const accountId = await createNewAccount();
+    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
+    const accountId = responseSignup.data.accountId;
     const request = {
         accountId: accountId,
         assetId: "XXXX",
         quantity: 10
     };
-    //When
     var response = await axios.post("http://localhost:3000/withdraw", request);
-
-    //Then
     expect(response.status).toBe(422);
-    expect(response.data.error).toBe("Invalid Asset")
-
+    expect(response.data.error).toBe("Invalid Asset");
 });
 
 test("Deve Retornar 422 quando a quantidade for negativa", async () => {
-    const accountId = await createNewAccount();
+    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
+    const accountId = responseSignup.data.accountId;
     const request = {
         accountId: accountId,
         assetId: "BTC",
         quantity: -10
     };
-    //When
     var response = await axios.post("http://localhost:3000/withdraw", request);
-
-    //Then
     expect(response.status).toBe(422);
     expect(response.data.error).toBe("Invalid Quantity")
-
 });
 
 test("Deve Retornar 422 quando tentar sacar um ativo inexistente para a conta", async () => {
-    const accountId = await createNewAccount();
+    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
+    const accountId = responseSignup.data.accountId;
     const request = {
         accountId: accountId,
         assetId: "BTC",
         quantity: 10
     };
-    //When
     var response = await axios.post("http://localhost:3000/withdraw", request);
-
-    //Then
     expect(response.status).toBe(422);
     expect(response.data.error).toBe("Balance unavailable")
-
 });
 
 
 test("Deve Retornar 422 quando tentar um valor maior que o disponível", async () => {
-    const accountId = await createNewAccount();
-    await doTransaction({
-        accountId,
+    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
+    const accountId = responseSignup.data.accountId;
+    const requestDeposit = {
+        accountId: accountId,
         assetId: "BTC",
         quantity: 5
-    });
+    };
+    var response = await axios.post("http://localhost:3000/deposit", requestDeposit)
     const request = {
         accountId: accountId,
         assetId: "BTC",
         quantity: 10
     };
-
-    //When
     var response = await axios.post("http://localhost:3000/withdraw", request);
-
-    //Then
     expect(response.status).toBe(422);
     expect(response.data.error).toBe("Balance unavailable")
 });
 
 test("Deve Decrementar Corretamente o Valor Sacado da Conta", async() => {
-    //Given
-    const accountId = await createNewAccount();
-    await doTransaction({
-        accountId,
+    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
+    const accountId = responseSignup.data.accountId;
+    const requestDeposit = {
+        accountId: accountId,
         assetId: "BTC",
         quantity: 30
-    });
+    };
+    var response = await axios.post("http://localhost:3000/deposit", requestDeposit)
     const request = {
         accountId: accountId,
         assetId: "BTC",
         quantity: 10
     };
-
-    //When
     var response = await axios.post("http://localhost:3000/withdraw", request);
-
-    //Then
-    var balance = await getAccountBalanceByAsset(accountId, "BTC");
+    const responseGetAccount = await axios.get(`http://localhost:3000/accounts/${accountId}`);
+    const account = responseGetAccount.data.account;
+    const balance = account.Assets.find((a:any) => a.assetId === "BTC");
     expect(response.status).toBe(200)
     expect(balance).toBeDefined();
     expect(balance?.quantity).toBe(20);
 });
 
 test("Deve Decrementar Apenas o Valor do Ativo Sacado", async() => {
-    const accountId = await createNewAccount();
-    await doTransaction({
-        accountId,
+    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
+    const accountId = responseSignup.data.accountId;
+    const requestBtcDeposit = {
+        accountId: accountId,
         assetId: "BTC",
         quantity: 30
-    });
-    await doTransaction({
+    };
+    var response = await axios.post("http://localhost:3000/deposit", requestBtcDeposit)
+    const requestUsdDeposit = {
         accountId,
         assetId: "USD",
         quantity: 50
-    });
+    };
+    var response = await axios.post("http://localhost:3000/deposit", requestUsdDeposit)
     const request = {
         accountId: accountId,
         assetId: "BTC",
         quantity: 10
     };
-    //When
     var response = await axios.post("http://localhost:3000/withdraw", request);
-
-    //Then
-    var balance = await getAccountBalance(accountId);
-    var btcBalance =  balance.find(a => a.assetId === "BTC");
-    var usdBalance =  balance.find(a => a.assetId === "USD");
-
+    const responseGetAccount = await axios.get(`http://localhost:3000/accounts/${accountId}`);
+    const account = responseGetAccount.data.account;
+    var btcBalance =  account.Assets.find((a:any) => a.assetId === "BTC");
+    var usdBalance =  account.Assets.find((a:any) => a.assetId === "USD");
     expect(response.status).toBe(200)
-    expect(balance).toBeDefined();
+    expect(account.Assets).toBeDefined();
     expect(btcBalance?.quantity).toBe(20);
     expect(usdBalance?.quantity).toBe(50);
 })

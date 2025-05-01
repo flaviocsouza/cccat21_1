@@ -9,7 +9,7 @@ export class GetAccount{
     public async execute(accountId: any){
         const account = await this.dao.getAccountById(accountId);
         account.Assets = await this.dao.getAccountAssets(accountId);
-        return account
+        return { account }
     }
 
 }

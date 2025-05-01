@@ -1,10 +1,12 @@
 import express, {Request, Response } from "express";
-import { placeOrder } from "./placeOrder";
-import { Signup } from "./signup";
+import { Signup } from "./Signup";
 import { GetAccount } from "./GetAccount";
 import { AccountDao } from "./AccountDao";
-import { Deposit } from "./deposit";
-import { Withdraw } from "./withdraw";
+import { Deposit } from "./Deposit";
+import { Withdraw } from "./Withdraw";
+import { PlaceOrder } from "./PlaceOrder";
+import { OrderDao } from "./OrderDao";
+import { GetOrderById } from "./GetOrderById";
 
 const app = express();
 app.use(express.json());
@@ -13,8 +15,19 @@ const signup = new Signup(new AccountDao());
 const getAccount = new GetAccount(new AccountDao());
 const deposit = new Deposit(new AccountDao());
 const withdraw = new Withdraw(new AccountDao());
+const placeOrder = new PlaceOrder(new OrderDao(), new AccountDao());
+const getOrderById = new GetOrderById(new OrderDao());
 
-app.post("/placeOrder", placeOrder)
+app.post("/placeOrder", async(req: Request, res: Response) => {
+    try{
+        const response = await placeOrder.execute(req.body);
+        res.json(response);
+    }
+    catch(e)
+    {
+        res.status(422).json(e);
+    }
+});
 
 app.post("/deposit", async(req: Request, res: Response) => {
     try{
@@ -51,6 +64,11 @@ app.post("/signup", async (req: Request, res: Response) => {
 
 app.get("/accounts/:accountId", async (req: Request, res: Response) => {
     const response = await getAccount.execute(req.params.accountId);
+    res.json(response);
+});
+
+app.get("/order/:orderId", async (req: Request, res: Response) => {
+    const response = await getOrderById.execute(req.params.orderId);
     res.json(response);
 });
 

@@ -1,24 +1,25 @@
 import axios from "axios";
-import { createAccount, doTransaction } from "../src/account";
-import { createOrder, getOrderById } from "../src/order";
 
 axios.defaults.validateStatus = () => true;
 
-test("Deve Retornar 200 Para uma Ordem valida", async () => {
-    //Given
-    var account = {
+function newAccount() {
+    return {
         name: "John Doe",
-        email: "john.doe",
+        email: "john.doe@gmail.com",
         document: "97456321558",
         password: "asdQWE123"
-    }
+    };
+}
 
-    const accountId = await createAccount(account);
-    await doTransaction({
-        accountId,
+test("Deve Retornar 200 Para uma Ordem valida", async () => {
+    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
+    const accountId = responseSignup.data.accountId;
+    const requestDeposit = {
+        accountId: accountId,
         assetId: "BTC",
         quantity: 100
-    });
+    };
+    var response = await axios.post("http://localhost:3000/deposit", requestDeposit)
     const request = {
         marketId: "USD/BTC",
         accountId: accountId,
@@ -26,16 +27,11 @@ test("Deve Retornar 200 Para uma Ordem valida", async () => {
         quantity: 10,
         price: 300
     };
-
-    //When
     var response = await axios.post("http://localhost:3000/placeOrder", request);
-
-    //Then
     expect(response.status).toBe(200);
 });
 
-test("Deve retornar 404 caso a conta não exista", async () => {
-    //Given 
+test("Deve retornar erro caso a conta não exista", async () => {
     const request = {
         marketId: "BTC/USD",
         accountId: crypto.randomUUID(),
@@ -43,24 +39,14 @@ test("Deve retornar 404 caso a conta não exista", async () => {
         quantity: 10,
         price: 300
     };
-
-    //When
     var response = await axios.post("http://localhost:3000/placeOrder", request);
-
-    //Then 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(422);
     expect(response.data.error).toBe("Account Not Found");
 });
 
 test("Deve retornar 422 caso a conta não possua saldo em uma ordem de compra (Ativo não existe)", async () => {
-    //Given 
-    var account = {
-        name: "John Doe",
-        email: "john.doe",
-        document: "97456321558",
-        password: "asdQWE123"
-    };
-    const accountId = await createAccount(account);
+    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
+    const accountId = responseSignup.data.accountId;
     const request = {
         marketId: "BTC/USD",
         accountId: accountId,
@@ -68,29 +54,20 @@ test("Deve retornar 422 caso a conta não possua saldo em uma ordem de compra (A
         quantity: 10,
         price: 300
     };
-
-    //When
     var response = await axios.post("http://localhost:3000/placeOrder", request);
-
-    //Then 
     expect(response.status).toBe(422);
     expect(response.data.error).toBe("Balance unavailable");
 });
 
 test("Deve retornar 422 caso a conta não possua saldo em uma ordem de compra (Saldo Insuficiente)", async () => {
-    //Given 
-    var account = {
-        name: "John Doe",
-        email: "john.doe",
-        document: "97456321558",
-        password: "asdQWE123"
-    };
-    const accountId = await createAccount(account);
-    await doTransaction({
-        accountId,
+    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
+    const accountId = responseSignup.data.accountId;
+    const requestDeposit = {
+        accountId: accountId,
         assetId: "BTC",
         quantity: 5
-    });
+    };
+    var response = await axios.post("http://localhost:3000/deposit", requestDeposit)
     const request = {
         marketId: "BTC/USD",
         accountId: accountId,
@@ -98,24 +75,14 @@ test("Deve retornar 422 caso a conta não possua saldo em uma ordem de compra (S
         quantity: 10,
         price: 300
     };
-
-    //When
     var response = await axios.post("http://localhost:3000/placeOrder", request);
-
-    //Then 
     expect(response.status).toBe(422);
     expect(response.data.error).toBe("Balance unavailable");
 });
 
 test("Deve retornar 422 caso a conta não possua saldo em uma ordem de venda (Ativo não existe)", async () => {
-    //Given 
-    var account = {
-        name: "John Doe",
-        email: "john.doe",
-        document: "97456321558",
-        password: "asdQWE123"
-    };
-    const accountId = await createAccount(account);
+    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
+    const accountId = responseSignup.data.accountId;
     const request = {
         marketId: "BTC/USD",
         accountId: accountId,
@@ -123,29 +90,20 @@ test("Deve retornar 422 caso a conta não possua saldo em uma ordem de venda (At
         quantity: 10,
         price: 300
     };
-
-    //When
     var response = await axios.post("http://localhost:3000/placeOrder", request);
-
-    //Then 
     expect(response.status).toBe(422);
     expect(response.data.error).toBe("Balance unavailable");
 });
 
 test("Deve retornar 422 caso a conta não possua saldo em uma ordem de venda (Saldo Insuficiente)", async () => {
-    //Given 
-    var account = {
-        name: "John Doe",
-        email: "john.doe",
-        document: "97456321558",
-        password: "asdQWE123"
-    };
-    const accountId = await createAccount(account);
-    await doTransaction({
-        accountId,
-        assetId: "USD",
+    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
+    const accountId = responseSignup.data.accountId;
+    const requestDeposit = {
+        accountId: accountId,
+        assetId: "BTC",
         quantity: 5
-    });
+    };
+    var response = await axios.post("http://localhost:3000/deposit", requestDeposit)
     const request = {
         marketId: "BTC/USD",
         accountId: accountId,
@@ -153,29 +111,20 @@ test("Deve retornar 422 caso a conta não possua saldo em uma ordem de venda (Sa
         quantity: 10,
         price: 300
     };
-
-    //When
     var response = await axios.post("http://localhost:3000/placeOrder", request);
-
-    //Then 
     expect(response.status).toBe(422);
     expect(response.data.error).toBe("Balance unavailable");
 });
 
 test("Deve Salvar uma ordem de compra", async () => {
-    //Given
-    var account = {
-        name: "John Doe",
-        email: "john.doe",
-        document: "97456321558",
-        password: "asdQWE123"
-    };
-    const accountId = await createAccount(account);
-    await doTransaction({
-        accountId,
+    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
+    const accountId = responseSignup.data.accountId;
+    const requestDeposit = {
+        accountId: accountId,
         assetId: "BTC",
         quantity: 100
-    });
+    };
+    await axios.post("http://localhost:3000/deposit", requestDeposit)
     const request = {
         marketId: "USD/BTC",
         accountId: accountId,
@@ -183,35 +132,28 @@ test("Deve Salvar uma ordem de compra", async () => {
         quantity: 10,
         price: 300
     };
-
-    //When
-    var response = await axios.post("http://localhost:3000/placeOrder", request);
-    var order = await getOrderById(response.data.orderId);
-    
-    //Then
-    expect(response.status).toBe(200);
-    expect(order).toBeDefined();
-    expect(order?.marketId).toBe(request.marketId);
-    expect(order?.accountId).toBe(accountId);
-    expect(order?.side).toBe(request.side);
-    expect(order?.quantity).toBe(request.quantity);
-    expect(order?.price).toBe(request.price);
+    const responsePlaceOrder = await axios.post("http://localhost:3000/placeOrder", request);
+    const outputPlaceOrder = responsePlaceOrder.data;
+    expect(responsePlaceOrder.status).toBe(200);
+    expect(outputPlaceOrder.orderId).toBeDefined();
+    const getOrderResponse = await axios.get(`http://localhost:3000/order/${outputPlaceOrder.orderId}`);
+    const order = getOrderResponse.data.order;
+    expect(order.marketId).toBe(request.marketId);
+    expect(order.accountId).toBe(accountId);
+    expect(order.side).toBe(request.side);
+    expect(order.quantity).toBe(request.quantity);
+    expect(order.price).toBe(request.price);
 });
 
 test("Deve Salvar uma ordem de Venda", async () => {
-    //Given
-    var account = {
-        name: "John Doe",
-        email: "john.doe",
-        document: "97456321558",
-        password: "asdQWE123"
-    };
-    const accountId = await createAccount(account);
-    await doTransaction({
+    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
+    const accountId = responseSignup.data.accountId;
+    const requestDeposit = {
         accountId,
         assetId: "USD",
         quantity: 100
-    });
+    };
+    await axios.post("http://localhost:3000/deposit", requestDeposit);
     const request = {
         marketId: "USD/BTC",
         accountId: accountId,
@@ -219,13 +161,12 @@ test("Deve Salvar uma ordem de Venda", async () => {
         quantity: 10,
         price: 300
     };
-
-    //When
-    var response = await axios.post("http://localhost:3000/placeOrder", request);
-    var order = await getOrderById(response.data.orderId);
-    
-    //Then
-    expect(response.status).toBe(200);
+    const responsePlaceOrder = await axios.post("http://localhost:3000/placeOrder", request);
+    const outputPlaceOrder = responsePlaceOrder.data;
+    expect(responsePlaceOrder.status).toBe(200);
+    expect(outputPlaceOrder.orderId).toBeDefined();
+    const getOrderResponse = await axios.get(`http://localhost:3000/order/${outputPlaceOrder.orderId}`);
+    const order = getOrderResponse.data.order;
     expect(order).toBeDefined();
     expect(order?.marketId).toBe(request.marketId);
     expect(order?.accountId).toBe(accountId);
@@ -234,60 +175,39 @@ test("Deve Salvar uma ordem de Venda", async () => {
     expect(order?.price).toBe(request.price);
 });
 
-test("Deve considerar as Ordens anteriores para autorizar uma Ordem de compra", async() =>
-{
-     //Given
-     var account = {
-        name: "John Doe",
-        email: "john.doe",
-        document: "97456321558",
-        password: "asdQWE123"
-    };
-    const accountId = await createAccount(account);
-    await doTransaction({
-        accountId,
+test("Deve considerar as Ordens anteriores para autorizar uma Ordem de compra", async () => {
+    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
+    const accountId = responseSignup.data.accountId;
+    const requestDeposit = {
+        accountId: accountId,
         assetId: "BTC",
         quantity: 100
-    });
-    await createOrder({
+    };
+    await axios.post("http://localhost:3000/deposit", requestDeposit);
+    const firstOrderRequest = {
         marketId: "BTC/USD",
         accountId: accountId,
         side: "BUY",
         quantity: 70,
-        price: 300,
-        orderId: "",
-        fillQuantity: 0,
-        fillPrice: 0,
-        status: "",
-        timestamp: new Date()
-    });
-
-    await createOrder({
+        price: 300
+    };
+    await axios.post("http://localhost:3000/placeOrder", firstOrderRequest);
+    const secondOrderRequest = {
         marketId: "BTC/USD",
         accountId: accountId,
         side: "BUY",
         quantity: 10,
-        price: 300,
-        orderId: "",
-        fillQuantity: 0,
-        fillPrice: 0,
-        status: "",
-        timestamp: new Date()
-    });
-
-    await createOrder({
+        price: 300
+    };
+    await axios.post("http://localhost:3000/placeOrder", secondOrderRequest);
+    const thirdOrderRequest = {
         marketId: "USD/BTC",
         accountId: accountId,
         side: "SELL",
         quantity: 10,
-        price: 300,
-        orderId: "",
-        fillQuantity: 0,
-        fillPrice: 0,
-        status: "",
-        timestamp: new Date()
-    });
-
+        price: 300
+    };
+    await axios.post("http://localhost:3000/placeOrder", thirdOrderRequest);
     const request = {
         marketId: "BTC/USD",
         accountId: accountId,
@@ -295,70 +215,45 @@ test("Deve considerar as Ordens anteriores para autorizar uma Ordem de compra", 
         quantity: 30,
         price: 300
     };
-
-    //When
     var response = await axios.post("http://localhost:3000/placeOrder", request);
-
-    //Then 
     expect(response.status).toBe(422);
     expect(response.data.error).toBe("Balance unavailable");
 
 });
 
-test("Deve considerar as Ordens anteriores para autorizar uma Ordem de Venda", async() =>
-{
-     //Given
-     var account = {
-        name: "John Doe",
-        email: "john.doe",
-        document: "97456321558",
-        password: "asdQWE123"
-    };
-    const accountId = await createAccount(account);
-    await doTransaction({
-        accountId,
+test("Deve considerar as Ordens anteriores para autorizar uma Ordem de Venda", async () => {
+    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
+    const accountId = responseSignup.data.accountId;
+    const requestDeposit = {
+        accountId: accountId,
         assetId: "USD",
         quantity: 100
-    });
-    await createOrder({
+    };
+    await axios.post("http://localhost:3000/deposit", requestDeposit);
+    const firstOrderRequest = {
         marketId: "USD/BTC",
         accountId: accountId,
         side: "SELL",
         quantity: 70,
-        price: 300,
-        orderId: "",
-        fillQuantity: 0,
-        fillPrice: 0,
-        status: "",
-        timestamp: new Date()
-    });
-
-    await createOrder({
+        price: 300
+    };
+    await axios.post("http://localhost:3000/placeOrder", firstOrderRequest);
+    const secondOrderRequest = {
         marketId: "BTC/USD",
         accountId: accountId,
         side: "BUY",
         quantity: 10,
-        price: 300,
-        orderId: "",
-        fillQuantity: 0,
-        fillPrice: 0,
-        status: "",
-        timestamp: new Date()
-    });
-
-    await createOrder({
+        price: 300
+    };
+    await axios.post("http://localhost:3000/placeOrder", secondOrderRequest);
+    const thirdOrderRequest = {
         marketId: "USD/BTC",
         accountId: accountId,
         side: "SELL",
         quantity: 10,
-        price: 300,
-        orderId: "",
-        fillQuantity: 0,
-        fillPrice: 0,
-        status: "",
-        timestamp: new Date()
-    });
-
+        price: 300
+    };
+    await axios.post("http://localhost:3000/placeOrder", thirdOrderRequest);
     const request = {
         marketId: "USD/BTC",
         accountId: accountId,
@@ -366,84 +261,59 @@ test("Deve considerar as Ordens anteriores para autorizar uma Ordem de Venda", a
         quantity: 30,
         price: 300
     };
-
-    //When
     var response = await axios.post("http://localhost:3000/placeOrder", request);
-
-    //Then 
     expect(response.status).toBe(422);
     expect(response.data.error).toBe("Balance unavailable");
 
 });
 
 test("Deve considerar apenas ativos que serão usados para o pagamento", async () => {
-     //Given
-     var account = {
-        name: "John Doe",
-        email: "john.doe",
-        document: "97456321558",
-        password: "asdQWE123"
-    };
-    const accountId = await createAccount(account);
-    await doTransaction({
-        accountId,
+    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
+    const accountId = responseSignup.data.accountId;
+    const requestUsdDeposit = {
+        accountId: accountId,
         assetId: "USD",
         quantity: 100
-    });
-    await doTransaction({
-        accountId,
+    };
+    await axios.post("http://localhost:3000/deposit", requestUsdDeposit);
+    const requestBtcDeposit = {
+        accountId: accountId,
         assetId: "BTC",
         quantity: 100
-    });
-    await createOrder({
+    };
+    await axios.post("http://localhost:3000/deposit", requestBtcDeposit);
+    const firstOrderRequest = {
         marketId: "BTC/USD",
         accountId: accountId,
         side: "SELL",
         quantity: 70,
-        price: 300,
-        orderId: "",
-        fillQuantity: 0,
-        fillPrice: 0,
-        status: "",
-        timestamp: new Date()
-    });
-    await createOrder({
+        price: 300
+    };
+    await axios.post("http://localhost:3000/placeOrder", firstOrderRequest);
+    const secondOrderRequest = {
         marketId: "BTC/USD",
         accountId: accountId,
         side: "SELL",
         quantity: 10,
-        price: 300,
-        orderId: "",
-        fillQuantity: 0,
-        fillPrice: 0,
-        status: "",
-        timestamp: new Date()
-    });
-    await createOrder({
+        price: 300
+    };
+    await axios.post("http://localhost:3000/placeOrder", secondOrderRequest);
+    const thirdOrderRequest = {
         marketId: "USD/BTC",
         accountId: accountId,
         side: "BUY",
         quantity: 10,
-        price: 300,
-        orderId: "",
-        fillQuantity: 0,
-        fillPrice: 0,
-        status: "",
-        timestamp: new Date()
-    });
-    await createOrder({
+        price: 300
+    };
+    await axios.post("http://localhost:3000/placeOrder", thirdOrderRequest);
+    const fourthOrderRequest = {
         marketId: "BTC/USD",
         accountId: accountId,
         side: "SELL",
         quantity: 10,
-        price: 300,
-        orderId: "",
-        fillQuantity: 0,
-        fillPrice: 0,
-        status: "",
-        timestamp: new Date()
-    });
-
+        price: 300
+    };
+    await axios.post("http://localhost:3000/placeOrder", fourthOrderRequest);
     const request = {
         marketId: "USD/BTC",
         accountId: accountId,
@@ -451,10 +321,6 @@ test("Deve considerar apenas ativos que serão usados para o pagamento", async (
         quantity: 30,
         price: 300
     };
-
-    //When
     var response = await axios.post("http://localhost:3000/placeOrder", request);
-
-    //Then
     expect(response.status).toBe(200);
 });
