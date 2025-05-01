@@ -1,65 +1,35 @@
-import express, { Request, Response } from "express";
+import { IAccountDao } from "./AccountDao";
 import { validateCpf } from "./validateCpf";
-import { createAccount, getAccountById } from "./account";
 
+export class Signup {
 
+    private dao: IAccountDao;
+    constructor(dao: IAccountDao) {
+        this.dao = dao;
+     }
 
-function isValidName (name: string) {
-    return name.match(/[a-zA-Z] [a-zA-Z]+/);
-}
-
-function isValidEmail (email: string) {
-    return email.match(/^(.+)\@(.+)$/);
-}
-
-function isValidPassword (password: string) {
-    if (password.length < 8) return false;
-    if (!password.match(/\d+/)) return false;
-    if (!password.match(/[a-z]+/)) return false;
-    if (!password.match(/[A-Z]+/)) return false;
-    return true;
-}
-
-export async function signup(req: Request, res: Response) {
-    const input = req.body;
-    if (!isValidName(input.name)) {
-        return res.status(422).json({
-            error: "Invalid name"
-        });
+    public async execute(account: any) {
+        if (!this.isValidName(account.name)) throw { error: "Invalid name" };
+        if (!this.isValidEmail(account.email)) throw { error: "Invalid email" };
+        if (!validateCpf(account.document)) throw { error: "Invalid document" };
+        if (!this.isValidPassword(account.password)) throw { error: "Invalid password" };
+        const accountId = await this.dao.createAccount(account);        
+        return { accountId };
     }
-    if (!isValidEmail(input.email)) {
-        return res.status(422).json({
-            error: "Invalid email"
-        });
+
+    private isValidName (name: string) {
+        return name.match(/[a-zA-Z] [a-zA-Z]+/);
     }
-    if (!validateCpf(input.document)) {
-        return res.status(422).json({
-            error: "Invalid document"
-        });
+    
+    private isValidEmail (email: string) {
+        return email.match(/^(.+)\@(.+)$/);
     }
-    if (!isValidPassword(input.password)) {
-        return res.status(422).json({
-            error: "Invalid password"
-        });
+
+    private isValidPassword (password: string) {
+        if (password.length < 8) return false;
+        if (!password.match(/\d+/)) return false;
+        if (!password.match(/[a-z]+/)) return false;
+        if (!password.match(/[A-Z]+/)) return false;
+        return true;
     }
-   
-    const account = {
-        name: input.name,
-        email: input.email,
-        document: input.document,
-        password: input.password
-    }
-    // accounts.push(account);
-    const accountId = await createAccount(account);
-    res.json({
-        accountId
-    });
 }
-
-
-export async function getAccount(req: Request, res: Response){
-    const accountId = req.params.accountId;    
-    const [accountData] = await getAccountById(accountId);
-    res.json(accountData);    
-}
-

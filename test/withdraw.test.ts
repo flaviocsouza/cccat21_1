@@ -43,7 +43,7 @@ test("Deve Retornar 404 para uma conta inexistente", async () => {
 
     var response = await axios.post("http://localhost:3000/withdraw", request);
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(422);
     expect(response.data.error).toBe("Account Not Found");
 })
 

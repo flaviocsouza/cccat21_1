@@ -1,34 +1,21 @@
-import express, { Request, Response } from "express";
-import { Asset, doTransaction, getAccountBalanceByAsset, getAccountById } from "./account";
+import { AccountDao, IAccountDao } from "./AccountDao";
 
+export class Withdraw {
+    private dao: IAccountDao
+    validAssets = ["BTC", "USD"]
 
-const validAssets = ["BTC", "USD"]
+    constructor(dao: IAccountDao) {
+        this.dao = dao;
+    }
 
-export async function withdraw (req: Request, res: Response) {
-    const transaction = req.body as Asset
-    const account = await getAccountById(transaction.accountId)
-    if(account.length <= 0){
-    	return res.status(404).json({
-            error: "Account Not Found"
-        });
+    public async execute(withdraw: any) {
+        const account = await this.dao.getAccountById(withdraw.accountId)
+        if (!account) throw { error: "Account Not Found" };
+        if (!this.validAssets.find(s => s === withdraw.assetId)) throw { error: "Invalid Asset" };
+        if (withdraw.quantity < 0) throw { error: "Invalid Quantity" };
+        const asset = await this.dao.getAccountBalanceByAsset(withdraw.accountId, withdraw.assetId);
+        if (!asset || asset?.quantity < withdraw.quantity) throw { error: "Balance unavailable" };
+        asset.quantity -= withdraw.quantity;
+        await this.dao.updateAssetValue(asset);
     }
-    if(!validAssets.find(s => s === transaction.assetId)){
-        return res.status(422).json({
-            error: "Invalid Asset"
-        });
-    }
-    if(transaction.quantity < 0)
-    {
-        return res.status(422).json({
-            error: "Invalid Quantity"
-        });
-    }
-    const asset = await getAccountBalanceByAsset(transaction.accountId, transaction.assetId);
-    if(!asset || asset?.quantity < transaction.quantity){
-        return res.status(422).json({
-            error: "Balance unavailable"
-        });
-    }
-    await doTransaction(transaction, false)
-    res.json()
 }

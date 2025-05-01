@@ -1,31 +1,21 @@
-import { Request, Response } from "express";
-import { doTransaction, getAccountById } from "./account";
+import { IAccountDao } from "./AccountDao";
 
-const validAssets = ["BTC", "USD"]
+export class Deposit {
+    dao: IAccountDao;
+    validAssets = ["BTC", "USD"]
 
-export async function deposit(req: Request, res: Response) {
-    const deposit = req.body;
-    if (!validAssets.find(s => s === deposit.assetId)) {
-        return res.status(422).json({
-            error: "Invalid Asset"
-        });
+    constructor(dao: IAccountDao) {
+        this.dao = dao;
     }
-    if (deposit.quantity < 0) {
-        return res.status(422).json({
-            error: "Quantity Must Be Greater Than Zero"
-        });
+
+    public async execute(deposit: any) {
+        if (!this.validAssets.find(s => s === deposit.assetId)) throw { error: "Invalid Asset" };
+        if (deposit.quantity < 0) throw { error: "Quantity Must Be Greater Than Zero" };
+        const account = await this.dao.getAccountById(deposit.accountId);
+        if (!account) throw { error: "Account Not Found" };
+        let asset = await this.dao.getAccountBalanceByAsset(deposit.accountId, deposit.assetId);
+        if(!asset) return await this.dao.createAsset(deposit);
+        asset.quantity += deposit.quantity;
+        await this.dao.updateAssetValue(asset);        
     }
-    const account = await getAccountById(deposit.accountId)
-    if (account.length <= 0) {
-        return res.status(422).json({
-            error: "Account Not Found"
-        });
-    }
-    const transaction = {
-        accountId: deposit.accountId,
-        quantity: deposit.quantity,
-        assetId: deposit.assetId
-    };
-    await doTransaction(transaction);
-    res.json();
 }

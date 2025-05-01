@@ -34,7 +34,10 @@ const orderScripts = {
     selectOrderById: "select * from ccca.order where order_id = $1"
 }
 
+export async function query(queryString:string, params:any[]) : Promise<any> {
 
+    return await connection.query(queryString, params);    
+}
 
 
 
