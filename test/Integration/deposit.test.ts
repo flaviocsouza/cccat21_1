@@ -1,4 +1,3 @@
-import axios from "axios";
 import sinon from "sinon";
 import { Deposit } from "../../src/Deposit";
 import { Signup } from "../../src/Signup";
@@ -6,7 +5,6 @@ import { GetAccount } from "../../src/GetAccount";
 import { IAccountDao } from "../../src/AccountDao";
 import { FakeAccountDao } from "../Fake/FakeAccountDao";
 
-axios.defaults.validateStatus = () => true;
 
 let deposit: Deposit;
 let accountDao: IAccountDao;

@@ -1,9 +1,6 @@
-import axios from "axios";
 import { Signup } from "../../src/Signup";
 import { GetAccount } from "../../src/GetAccount";
 import { FakeAccountDao } from "../Fake/FakeAccountDao";
-
-axios.defaults.validateStatus = () => true;
 
 let signup: Signup;
 let getAccount: GetAccount;

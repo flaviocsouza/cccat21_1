@@ -1,6 +1,12 @@
-import axios from "axios";
-
-axios.defaults.validateStatus = () => true;
+import sinon from "sinon";
+import { PlaceOrder } from "../../src/PlaceOrder";
+import { IAccountDao } from "../../src/AccountDao";
+import { IOrderDao } from "../../src/OrderDao";
+import { FakeAccountDao } from "../Fake/FakeAccountDao";
+import { FakeOrderDao } from "../Fake/FakeOrderDao";
+import { Signup } from "../../src/Signup";
+import { Deposit } from "../../src/Deposit";
+import { GetOrderById } from "../../src/GetOrderById";
 
 function newAccount() {
     return {
@@ -11,316 +17,224 @@ function newAccount() {
     };
 }
 
-test("Deve Retornar 200 Para uma Ordem valida", async () => {
-    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
-    const accountId = responseSignup.data.accountId;
-    const requestDeposit = {
+let placeOrder: PlaceOrder;
+let accountDao: IAccountDao;
+let orderDao: IOrderDao;
+
+beforeEach(() => {
+    accountDao = new FakeAccountDao()
+    orderDao = new FakeOrderDao();
+    placeOrder = new PlaceOrder(orderDao, accountDao);
+})
+
+test("Deve Salvar uma ordem de compra", async () => {
+    const accountDaoMock = sinon.mock(FakeAccountDao.prototype);
+    const accountId = crypto.randomUUID();
+    accountDaoMock.expects("getAccountById").once().resolves({ accountId });
+    const asset = {
         accountId: accountId,
         assetId: "BTC",
         quantity: 100
     };
-    var response = await axios.post("http://localhost:3000/deposit", requestDeposit)
-    const request = {
+    accountDaoMock.expects("getAccountBalanceByAsset").once().resolves(asset);
+    const orderDaoMock = sinon.mock(FakeOrderDao.prototype);
+    orderDaoMock.expects("getOrdersByAccountId").once().resolves([]);
+    var orderId = crypto.randomUUID();
+    orderDaoMock.expects("createOrder").once().resolves(orderId);
+    const order = {
         marketId: "USD/BTC",
         accountId: accountId,
         side: "BUY",
         quantity: 10,
         price: 300
     };
-    var response = await axios.post("http://localhost:3000/placeOrder", request);
-    expect(response.status).toBe(200);
+    const returnPlaceOrder = await placeOrder.execute(order);
+    expect(returnPlaceOrder.orderId).toBe(orderId);
+    orderDaoMock.verify();
+    orderDaoMock.restore();
+    accountDaoMock.restore();
 });
 
-test("Deve retornar erro caso a conta não exista", async () => {
-    const request = {
+test("Não deve salvar a ordem caso a conta não exista", async () => {
+    const order = {
         marketId: "BTC/USD",
         accountId: crypto.randomUUID(),
         side: "BUY",
         quantity: 10,
         price: 300
     };
-    var response = await axios.post("http://localhost:3000/placeOrder", request);
-    expect(response.status).toBe(422);
-    expect(response.data.error).toBe("Account Not Found");
+    await expect(() => placeOrder.execute(order)).rejects.toThrow("Account Not Found");
 });
 
-test("Deve retornar 422 caso a conta não possua saldo em uma ordem de compra (Ativo não existe)", async () => {
-    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
-    const accountId = responseSignup.data.accountId;
-    const request = {
+test("Não deve salvar a ordem caso a conta não possua saldo para a ordem de compra (Ativo não existe)", async () => {
+    const accountDaoMock = sinon.mock(FakeAccountDao.prototype);
+    const accountId = crypto.randomUUID();
+    accountDaoMock.expects("getAccountById").once().resolves({ accountId });
+    accountDaoMock.expects("getAccountBalanceByAsset").once().resolves(null);
+    const orderDaoMock = sinon.mock(FakeOrderDao.prototype);
+    orderDaoMock.expects("getOrdersByAccountId").once().resolves([]);
+    const order = {
         marketId: "BTC/USD",
         accountId: accountId,
         side: "BUY",
         quantity: 10,
         price: 300
     };
-    var response = await axios.post("http://localhost:3000/placeOrder", request);
-    expect(response.status).toBe(422);
-    expect(response.data.error).toBe("Balance unavailable");
+    await expect(() => placeOrder.execute(order)).rejects.toThrow("Balance unavailable");
+    accountDaoMock.restore();
+    orderDaoMock.restore();
 });
 
-test("Deve retornar 422 caso a conta não possua saldo em uma ordem de compra (Saldo Insuficiente)", async () => {
-    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
-    const accountId = responseSignup.data.accountId;
-    const requestDeposit = {
+test("Não deve salvar a ordem caso a conta não possua saldo para a ordem de compra (Saldo Insuficiente)", async () => {
+    const accountDaoMock = sinon.mock(FakeAccountDao.prototype);
+    const accountId = crypto.randomUUID();
+    accountDaoMock.expects("getAccountById").once().resolves({ accountId });
+    const asset = {
         accountId: accountId,
         assetId: "BTC",
         quantity: 5
     };
-    var response = await axios.post("http://localhost:3000/deposit", requestDeposit)
-    const request = {
+    accountDaoMock.expects("getAccountBalanceByAsset").once().resolves(asset);
+    const orderDaoMock = sinon.mock(FakeOrderDao.prototype);
+    orderDaoMock.expects("getOrdersByAccountId").once().resolves([]);
+    const order = {
         marketId: "BTC/USD",
         accountId: accountId,
         side: "BUY",
         quantity: 10,
         price: 300
     };
-    var response = await axios.post("http://localhost:3000/placeOrder", request);
-    expect(response.status).toBe(422);
-    expect(response.data.error).toBe("Balance unavailable");
+    await expect(() => placeOrder.execute(order)).rejects.toThrow("Balance unavailable");
+    accountDaoMock.restore();
+    orderDaoMock.restore();
 });
 
-test("Deve retornar 422 caso a conta não possua saldo em uma ordem de venda (Ativo não existe)", async () => {
-    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
-    const accountId = responseSignup.data.accountId;
-    const request = {
-        marketId: "BTC/USD",
-        accountId: accountId,
-        side: "SELL",
-        quantity: 10,
-        price: 300
-    };
-    var response = await axios.post("http://localhost:3000/placeOrder", request);
-    expect(response.status).toBe(422);
-    expect(response.data.error).toBe("Balance unavailable");
-});
-
-test("Deve retornar 422 caso a conta não possua saldo em uma ordem de venda (Saldo Insuficiente)", async () => {
-    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
-    const accountId = responseSignup.data.accountId;
-    const requestDeposit = {
-        accountId: accountId,
-        assetId: "BTC",
-        quantity: 5
-    };
-    var response = await axios.post("http://localhost:3000/deposit", requestDeposit)
-    const request = {
-        marketId: "BTC/USD",
-        accountId: accountId,
-        side: "SELL",
-        quantity: 10,
-        price: 300
-    };
-    var response = await axios.post("http://localhost:3000/placeOrder", request);
-    expect(response.status).toBe(422);
-    expect(response.data.error).toBe("Balance unavailable");
-});
-
-test("Deve Salvar uma ordem de compra", async () => {
-    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
-    const accountId = responseSignup.data.accountId;
-    const requestDeposit = {
+test("Deve considerar as Ordens anteriores para autorizar uma Ordem de Compra", async () => {
+    const accountDaoMock = sinon.mock(FakeAccountDao.prototype);
+    const accountId = crypto.randomUUID();
+    accountDaoMock.expects("getAccountById").once().resolves({ accountId });
+    const asset = {
         accountId: accountId,
         assetId: "BTC",
         quantity: 100
     };
-    await axios.post("http://localhost:3000/deposit", requestDeposit)
-    const request = {
-        marketId: "USD/BTC",
-        accountId: accountId,
-        side: "BUY",
-        quantity: 10,
-        price: 300
-    };
-    const responsePlaceOrder = await axios.post("http://localhost:3000/placeOrder", request);
-    const outputPlaceOrder = responsePlaceOrder.data;
-    expect(responsePlaceOrder.status).toBe(200);
-    expect(outputPlaceOrder.orderId).toBeDefined();
-    const getOrderResponse = await axios.get(`http://localhost:3000/order/${outputPlaceOrder.orderId}`);
-    const order = getOrderResponse.data.order;
-    expect(order.marketId).toBe(request.marketId);
-    expect(order.accountId).toBe(accountId);
-    expect(order.side).toBe(request.side);
-    expect(order.quantity).toBe(request.quantity);
-    expect(order.price).toBe(request.price);
-});
-
-test("Deve Salvar uma ordem de Venda", async () => {
-    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
-    const accountId = responseSignup.data.accountId;
-    const requestDeposit = {
-        accountId,
-        assetId: "USD",
-        quantity: 100
-    };
-    await axios.post("http://localhost:3000/deposit", requestDeposit);
-    const request = {
-        marketId: "USD/BTC",
-        accountId: accountId,
-        side: "SELL",
-        quantity: 10,
-        price: 300
-    };
-    const responsePlaceOrder = await axios.post("http://localhost:3000/placeOrder", request);
-    const outputPlaceOrder = responsePlaceOrder.data;
-    expect(responsePlaceOrder.status).toBe(200);
-    expect(outputPlaceOrder.orderId).toBeDefined();
-    const getOrderResponse = await axios.get(`http://localhost:3000/order/${outputPlaceOrder.orderId}`);
-    const order = getOrderResponse.data.order;
-    expect(order).toBeDefined();
-    expect(order?.marketId).toBe(request.marketId);
-    expect(order?.accountId).toBe(accountId);
-    expect(order?.side).toBe(request.side);
-    expect(order?.quantity).toBe(request.quantity);
-    expect(order?.price).toBe(request.price);
-});
-
-test("Deve considerar as Ordens anteriores para autorizar uma Ordem de compra", async () => {
-    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
-    const accountId = responseSignup.data.accountId;
-    const requestDeposit = {
-        accountId: accountId,
-        assetId: "BTC",
-        quantity: 100
-    };
-    await axios.post("http://localhost:3000/deposit", requestDeposit);
-    const firstOrderRequest = {
-        marketId: "BTC/USD",
-        accountId: accountId,
-        side: "BUY",
-        quantity: 70,
-        price: 300
-    };
-    await axios.post("http://localhost:3000/placeOrder", firstOrderRequest);
-    const secondOrderRequest = {
-        marketId: "BTC/USD",
-        accountId: accountId,
-        side: "BUY",
-        quantity: 10,
-        price: 300
-    };
-    await axios.post("http://localhost:3000/placeOrder", secondOrderRequest);
-    const thirdOrderRequest = {
-        marketId: "USD/BTC",
-        accountId: accountId,
-        side: "SELL",
-        quantity: 10,
-        price: 300
-    };
-    await axios.post("http://localhost:3000/placeOrder", thirdOrderRequest);
-    const request = {
+    accountDaoMock.expects("getAccountBalanceByAsset").once().resolves(asset);
+    const orders = [
+        {
+            marketId: "BTC/USD",
+            accountId: accountId,
+            side: "BUY",
+            quantity: 70,
+            price: 300,
+            status: "Created"
+        },
+        {
+            marketId: "BTC/USD",
+            accountId: accountId,
+            side: "BUY",
+            quantity: 10,
+            price: 300,
+            status: "Created"
+        },
+        {
+            marketId: "USD/BTC",
+            accountId: accountId,
+            side: "SELL",
+            quantity: 10,
+            price: 300,
+            status: "Created"
+        }];
+    const orderDaoMock = sinon.mock(FakeOrderDao.prototype);
+    orderDaoMock.expects("getOrdersByAccountId").once().resolves(orders);
+    const order = {
         marketId: "BTC/USD",
         accountId: accountId,
         side: "BUY",
         quantity: 30,
         price: 300
     };
-    var response = await axios.post("http://localhost:3000/placeOrder", request);
-    expect(response.status).toBe(422);
-    expect(response.data.error).toBe("Balance unavailable");
-
+    await expect(() => placeOrder.execute(order)).rejects.toThrow("Balance unavailable");
+    accountDaoMock.restore();
+    orderDaoMock.restore();
 });
+
 
 test("Deve considerar as Ordens anteriores para autorizar uma Ordem de Venda", async () => {
-    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
-    const accountId = responseSignup.data.accountId;
-    const requestDeposit = {
+    const accountDaoMock = sinon.mock(FakeAccountDao.prototype);
+    const accountId = crypto.randomUUID();
+    accountDaoMock.expects("getAccountById").once().resolves({ accountId });
+    const asset = {
         accountId: accountId,
         assetId: "USD",
         quantity: 100
     };
-    await axios.post("http://localhost:3000/deposit", requestDeposit);
-    const firstOrderRequest = {
-        marketId: "USD/BTC",
-        accountId: accountId,
-        side: "SELL",
-        quantity: 70,
-        price: 300
-    };
-    await axios.post("http://localhost:3000/placeOrder", firstOrderRequest);
-    const secondOrderRequest = {
+    accountDaoMock.expects("getAccountBalanceByAsset").once().resolves(asset);
+    const orders = [
+        {
+            marketId: "BTC/USD",
+            accountId: accountId,
+            side: "SELL",
+            quantity: 70,
+            price: 300,
+            status: "Created"
+        },
+        {
+            marketId: "BTC/USD",
+            accountId: accountId,
+            side: "SELL",
+            quantity: 10,
+            price: 300,
+            status: "Created"
+        },
+        {
+            marketId: "USD/BTC",
+            accountId: accountId,
+            side: "BUY",
+            quantity: 10,
+            price: 300,
+            status: "Created"
+        }];
+    const orderDaoMock = sinon.mock(FakeOrderDao.prototype);
+    orderDaoMock.expects("getOrdersByAccountId").once().resolves(orders);
+    const order = {
         marketId: "BTC/USD",
-        accountId: accountId,
-        side: "BUY",
-        quantity: 10,
-        price: 300
-    };
-    await axios.post("http://localhost:3000/placeOrder", secondOrderRequest);
-    const thirdOrderRequest = {
-        marketId: "USD/BTC",
-        accountId: accountId,
-        side: "SELL",
-        quantity: 10,
-        price: 300
-    };
-    await axios.post("http://localhost:3000/placeOrder", thirdOrderRequest);
-    const request = {
-        marketId: "USD/BTC",
         accountId: accountId,
         side: "SELL",
         quantity: 30,
         price: 300
     };
-    var response = await axios.post("http://localhost:3000/placeOrder", request);
-    expect(response.status).toBe(422);
-    expect(response.data.error).toBe("Balance unavailable");
-
+    await expect(() => placeOrder.execute(order)).rejects.toThrow("Balance unavailable");
+    accountDaoMock.restore();
+    orderDaoMock.restore();
 });
 
-test("Deve considerar apenas ativos que serão usados para o pagamento", async () => {
-    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
-    const accountId = responseSignup.data.accountId;
-    const requestUsdDeposit = {
-        accountId: accountId,
-        assetId: "USD",
-        quantity: 100
-    };
-    await axios.post("http://localhost:3000/deposit", requestUsdDeposit);
-    const requestBtcDeposit = {
+
+test("Deve Salvar uma Order Corretamente dentro do Fluxo Correto ", async () => {
+    const signupReturn = await new Signup(accountDao).execute(newAccount());
+    const deposit = new Deposit(accountDao);
+    const getOrderById = new GetOrderById(orderDao);
+    const accountId = signupReturn.accountId;
+    const previousUsdDeposit = {
         accountId: accountId,
         assetId: "BTC",
         quantity: 100
     };
-    await axios.post("http://localhost:3000/deposit", requestBtcDeposit);
-    const firstOrderRequest = {
+    await deposit.execute(previousUsdDeposit);    
+    const newOrder = {
         marketId: "BTC/USD",
         accountId: accountId,
         side: "SELL",
         quantity: 70,
         price: 300
     };
-    await axios.post("http://localhost:3000/placeOrder", firstOrderRequest);
-    const secondOrderRequest = {
-        marketId: "BTC/USD",
-        accountId: accountId,
-        side: "SELL",
-        quantity: 10,
-        price: 300
-    };
-    await axios.post("http://localhost:3000/placeOrder", secondOrderRequest);
-    const thirdOrderRequest = {
-        marketId: "USD/BTC",
-        accountId: accountId,
-        side: "BUY",
-        quantity: 10,
-        price: 300
-    };
-    await axios.post("http://localhost:3000/placeOrder", thirdOrderRequest);
-    const fourthOrderRequest = {
-        marketId: "BTC/USD",
-        accountId: accountId,
-        side: "SELL",
-        quantity: 10,
-        price: 300
-    };
-    await axios.post("http://localhost:3000/placeOrder", fourthOrderRequest);
-    const request = {
-        marketId: "USD/BTC",
-        accountId: accountId,
-        side: "SELL",
-        quantity: 30,
-        price: 300
-    };
-    var response = await axios.post("http://localhost:3000/placeOrder", request);
-    expect(response.status).toBe(200);
+    const placeOrderResult = await placeOrder.execute(newOrder);
+    const returnOrder = await getOrderById.execute(placeOrderResult.orderId);
+    const order = returnOrder.order;
+    expect(order.orderId).toBe(placeOrderResult.orderId);
+    expect(order.marketId).toBe(newOrder.marketId);
+    expect(order.accountId).toBe(newOrder.accountId);
+    expect(order.side).toBe(newOrder.side);
+    expect(order.quantity).toBe(newOrder.quantity);
+    expect(order.price).toBe(newOrder.price);
+    expect(order.status).toBe("Created");
 });

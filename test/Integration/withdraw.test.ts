@@ -1,13 +1,11 @@
-import axios from "axios";
-import { Withdraw } from "../../src/Withdraw";
-import { AccountDao, IAccountDao } from "../../src/AccountDao";
-import { FakeAccountDao } from "../Fake/FakeAccountDao";
 import sinon from "sinon";
+import { Withdraw } from "../../src/Withdraw";
+import { IAccountDao } from "../../src/AccountDao";
+import { FakeAccountDao } from "../Fake/FakeAccountDao";
 import { Signup } from "../../src/Signup";
 import { Deposit } from "../../src/Deposit";
 import { GetAccount } from "../../src/GetAccount";
 
-axios.defaults.validateStatus = () => true;
 
 function newAccount() {
     return {
@@ -70,7 +68,7 @@ test("Não deve realizar um saque para um Ativo for invalido", async () => {
     accountDaoMock.restore();
 });
 
-test("Não deve realizar um saque para uma quantidade negativa", async () => {
+test("Não deve realizar um saque para uma Quantidade negativa", async () => {
     const accountDaoMock = sinon.mock(FakeAccountDao.prototype);
     const accountId = crypto.randomUUID();
     accountDaoMock.expects("getAccountById").once().resolves({ accountId });
