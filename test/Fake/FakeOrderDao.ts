@@ -1,6 +1,9 @@
 import { IOrderDao } from "../../src/OrderDao";
 
 export class FakeOrderDao implements IOrderDao{
+    getOrdersByMarketId(marketId: string) : any[] {
+        return [];
+    }
     
     orders: any = [];
 
@@ -12,7 +15,7 @@ export class FakeOrderDao implements IOrderDao{
     getOrderById(orderId: any) {
         const order = this.orders.find((order: any) => order.orderId === orderId);
         return order;
-    }
+    } 
     createOrder(order: any) {
         const orderId = crypto.randomUUID();
         order.orderId = orderId;        

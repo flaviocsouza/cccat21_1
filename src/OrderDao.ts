@@ -4,9 +4,13 @@ export interface IOrderDao {
     getOrdersByAccountId(accountId: any): any
     getOrderById(orderId: any): any
     createOrder(order: any): any
+    getOrdersByMarketId(marketId:string): any[]
 }
 
 export class OrderDao implements IOrderDao {
+    getOrdersByMarketId(marketId: string) : any[]  {
+        throw new Error("Method not implemented.")
+    }
     async getOrdersByAccountId(accountId: any) {
         return await query(orderScripts.selectOrdersByAccountId, accountId)
             .then((order: any) => {
