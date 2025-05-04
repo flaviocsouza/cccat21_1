@@ -1,4 +1,5 @@
 import axios from "axios";
+import { GetDepth } from "../../src/GetDepth";
 
 axios.defaults.validateStatus = () => true;
 
@@ -80,7 +81,6 @@ test("Deposit => Não deve criar um deposito Invalido", async () => {
     expect(response.status).toBe(422);
     expect(response.data.error).toBe("Invalid Asset")
 });
-
 
 test("Withdraw => Deve fazer um Saque corretamente", async() => {
     const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
@@ -205,3 +205,131 @@ test("Place Order => Não deve salvar uma Ordem com Saldo Insuficiente", async (
     expect(response.status).toBe(422);
     expect(response.data.error).toBe("Balance unavailable");
 });
+
+test("GetDepth => Deve obter o Depth corretamente", async () => {
+    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
+    const accountId = responseSignup.data.accountId;
+    const requestDepositBtc = {
+        accountId: accountId,
+        assetId: "BTC",
+        quantity: 99999999
+    };
+    await axios.post("http://localhost:3000/deposit", requestDepositBtc);
+    const requestDepositUsd = {
+        accountId: accountId,
+        assetId: "USD",
+        quantity: 99999999
+    };
+    await axios.post("http://localhost:3000/deposit", requestDepositUsd);
+    await axios.post("http://localhost:3000/placeOrder", {
+        marketId: "USD/BTC",
+        accountId: accountId,
+        side: "SELL",
+        quantity: 70,
+        price: 59000
+    });     
+    await axios.post("http://localhost:3000/placeOrder", {
+        marketId: "USD/BTC",
+        accountId: accountId,
+        side: "BUY",
+        quantity: 35,
+        price: 53000
+    });  
+    await axios.post("http://localhost:3000/placeOrder", {
+        marketId: "USD/BTC",
+        accountId: accountId,
+        side: "BUY",
+        quantity: 10,
+        price: 53030
+    });
+    const response = await axios.get("http://localhost:3000/getDepth?marketId=USD/BTC&precision=3")
+    expect(response.status).toBe(200);
+    expect(response.data).toBeDefined();
+    expect(response.data.buys).toBeDefined();
+    expect(response.data.sells).toBeDefined();
+});
+
+
+test("GetDepth => Deve obter o Depth corretamente aceitando precision como um parametro opcional", async () => {
+    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
+    const accountId = responseSignup.data.accountId;
+    const requestDepositBtc = {
+        accountId: accountId,
+        assetId: "BTC",
+        quantity: 99999999
+    };
+    await axios.post("http://localhost:3000/deposit", requestDepositBtc);
+    const requestDepositUsd = {
+        accountId: accountId,
+        assetId: "USD",
+        quantity: 99999999
+    };
+    await axios.post("http://localhost:3000/deposit", requestDepositUsd);
+    await axios.post("http://localhost:3000/placeOrder", {
+        marketId: "USD/BTC",
+        accountId: accountId,
+        side: "SELL",
+        quantity: 70,
+        price: 59000
+    });     
+    await axios.post("http://localhost:3000/placeOrder", {
+        marketId: "USD/BTC",
+        accountId: accountId,
+        side: "BUY",
+        quantity: 35,
+        price: 53000
+    });  
+    await axios.post("http://localhost:3000/placeOrder", {
+        marketId: "USD/BTC",
+        accountId: accountId,
+        side: "BUY",
+        quantity: 10,
+        price: 53030
+    });
+    const response = await axios.get("http://localhost:3000/getDepth?marketId=USD/BTC")
+    expect(response.status).toBe(200);
+    expect(response.data).toBeDefined();
+    expect(response.data.buys).toBeDefined();
+    expect(response.data.sells).toBeDefined();
+});
+
+test("GetDepth => Deve retornar erro ao enviar informações invalidas", async () => {
+    const responseSignup = await axios.post("http://localhost:3000/signup", newAccount());
+    const accountId = responseSignup.data.accountId;
+    const requestDepositBtc = {
+        accountId: accountId,
+        assetId: "BTC",
+        quantity: 99999999
+    };
+    await axios.post("http://localhost:3000/deposit", requestDepositBtc);
+    const requestDepositUsd = {
+        accountId: accountId,
+        assetId: "USD",
+        quantity: 99999999
+    };
+    await axios.post("http://localhost:3000/deposit", requestDepositUsd);
+    await axios.post("http://localhost:3000/placeOrder", {
+        marketId: "USD/BTC",
+        accountId: accountId,
+        side: "SELL",
+        quantity: 70,
+        price: 59000
+    });     
+    await axios.post("http://localhost:3000/placeOrder", {
+        marketId: "USD/BTC",
+        accountId: accountId,
+        side: "BUY",
+        quantity: 35,
+        price: 53000
+    });  
+    await axios.post("http://localhost:3000/placeOrder", {
+        marketId: "USD/BTC",
+        accountId: accountId,
+        side: "BUY",
+        quantity: 10,
+        price: 53030
+    });
+    const response = await axios.get("http://localhost:3000/getDepth?marketId=USD/XXX")
+    expect(response.status).toBe(422);
+    expect(response.data.error).toBe("Invalid Asset");
+})

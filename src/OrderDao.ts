@@ -4,13 +4,31 @@ export interface IOrderDao {
     getOrdersByAccountId(accountId: any): any
     getOrderById(orderId: any): any
     createOrder(order: any): any
-    getOrdersByMarketId(marketId:string): any[]
+    getOrdersByMarketId(marketId:string): any
 }
 
 export class OrderDao implements IOrderDao {
-    getOrdersByMarketId(marketId: string) : any[]  {
-        throw new Error("Method not implemented.")
+
+    async getOrdersByMarketId(marketId: string) : Promise<any[]>{
+        return await query(orderScripts.selectOrdersByMarketId, [marketId])
+            .then((order: any) => {
+                return order.map((o: any) => {
+                    return {
+                        orderId: o.orderId,
+                        marketId: o.marketId,
+                        accountId: o.accountId,
+                        side: o.side,
+                        quantity: parseFloat(o.quantity),
+                        price: parseFloat(o.price),
+                        fillQuantity: parseFloat(o.fillQuantity),
+                        fillPrice: parseFloat(o.fillPrice),
+                        status: o.status,
+                        timestamp: o.timestamp
+                    };
+                });
+            });
     }
+
     async getOrdersByAccountId(accountId: any) {
         return await query(orderScripts.selectOrdersByAccountId, accountId)
             .then((order: any) => {

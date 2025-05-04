@@ -7,6 +7,7 @@ import { Withdraw } from "./Withdraw";
 import { PlaceOrder } from "./PlaceOrder";
 import { OrderDao } from "./OrderDao";
 import { GetOrderById } from "./GetOrderById";
+import { GetDepth } from "./GetDepth";
 
 const app = express();
 app.use(express.json());
@@ -17,6 +18,7 @@ const deposit = new Deposit(new AccountDao());
 const withdraw = new Withdraw(new AccountDao());
 const placeOrder = new PlaceOrder(new OrderDao(), new AccountDao());
 const getOrderById = new GetOrderById(new OrderDao());
+const getDepth = new GetDepth(new OrderDao());
 
 app.post("/placeOrder", async(req: Request, res: Response) => {
     try{
@@ -67,5 +69,19 @@ app.get("/order/:orderId", async (req: Request, res: Response) => {
     const response = await getOrderById.execute(req.params.orderId);
     res.json(response);
 });
+
+app.get("/getDepth", async(req: Request, res: Response) => {
+    try{
+        const depth = {
+            marketId: req.query.marketId,
+            precision: req.query.precision
+        };
+        const response = await getDepth.execute(depth);
+        res.json(response);
+    }
+    catch(error: any) {
+        res.status(422).json({ error: error.message })
+    }
+})
 
 app.listen(3000);

@@ -31,6 +31,7 @@ const accountScripts  = {
 const orderScripts = {
     insertOrder: "insert into ccca.order (order_id, market_id, account_id, side, quantity, price, status, timestamp) values ($1, $2, $3, $4, $5, $6, $7, $8)",
     selectOrdersByAccountId:"select * from ccca.order where account_id = $1",
+    selectOrdersByMarketId:"select * from ccca.order where market_id = $1",
     selectOrderById: "select * from ccca.order where order_id = $1"
 }
 
